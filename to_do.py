@@ -1,7 +1,9 @@
 import customtkinter as ctk
+import json
+
 
 class mainframe(ctk.CTk):
-    tasks = []
+    json_file = "./tasks.json"
 
     def __init__(self):
         super().__init__()
@@ -25,23 +27,51 @@ class mainframe(ctk.CTk):
         self.checkbox_frame = ctk.CTkFrame(self)
         self.checkbox_frame.grid(row=4, rowspan=10, column=0, columnspan=7, sticky="news")
 
-    def show_tasks(self, *args):
-        for child in self.checkbox_frame.winfo_children():
-            child.destroy()
-        for i, task in enumerate(self.tasks):
-            button_task = ctk.CTkButton(self.checkbox_frame, text=task, command=lambda i=i: self.remove_task(i))
-            button_task.pack()
+        self.load_json_data()
+        self.show_tasks()
 
     def new_task(self):
-        textt = self.add_new_task.get()
-        if textt != "":
-            self.tasks.append(textt)
+        text = self.add_new_task.get()
+        if text != "":
+            new_task = {
+                f"task_id_{len(data.keys()) + 1}": {
+                    "task": text,
+                    "completed": False
+                }
+            }
+            data.update(new_task)
+            with open(self.json_file, "w") as file:
+                json.dump(data, file, indent=2)
         self.add_new_task.delete(0, 'end')
         self.show_tasks()
 
+    def load_json_data(self):
+        global data
+        try:
+            with open(self.json_file, "r") as file:
+                data = json.load(file)
+        except (FileNotFoundError, json.decoder.JSONDecodeError):
+            data = {}
+            with open(self.json_file, "w") as file:
+                json.dump(data, file, indent=2)
 
-    def remove_task(self, index):
-        self.tasks.pop(index)
+    def show_tasks(self, *args):
+        for child in self.checkbox_frame.winfo_children():
+            child.destroy()
+        self.load_json_data()
+        for key, val in data.items():
+            if not val["completed"]:
+                var_checkbox = ctk.IntVar(value=val["completed"])
+                checkbox_task = ctk.CTkCheckBox(self.checkbox_frame, text=val["task"], variable=var_checkbox)
+                checkbox_task.bind("<Button-1>", lambda event, key=key, var_checkbox=var_checkbox: self.toggle_task(key, var_checkbox.get()))
+                checkbox_task.pack()
+                
+    def toggle_task(self, index, state):
+        data[index]["completed"] = state
+        print
+        with open(self.json_file, "w") as file:
+            json.dump(data, file, indent=2)
+        self.load_json_data()
         self.show_tasks()
 
 if __name__ == "__main__":
